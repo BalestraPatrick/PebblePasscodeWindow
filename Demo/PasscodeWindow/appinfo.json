@@ -1,0 +1,32 @@
+{
+  "uuid": "23871abe-bc43-4b7b-97a6-f1c8ccc80144",
+  "shortName": "Passcode",
+  "longName": "Passcode Window",
+  "companyName": "Patrick Balestra",
+  "versionCode": 1,
+  "versionLabel": "1.0.0",
+  "watchapp": {
+    "watchface": false
+  },
+  "appKeys": {
+  },
+  "resources": {
+    "media": [
+        {
+            "name": "CIRCLE",
+            "type": "png",
+            "file": "Circle.png"
+        },
+        {
+            "name": "CIRCLE_FILLED",
+            "type": "png",
+            "file": "CircleFilled.png"
+        },
+        {
+            "name": "LINE",
+            "type": "png",
+            "file": "line.png"
+        }
+      ]
+  }
+}
