@@ -1,6 +1,8 @@
 /*
  Developed by: Patrick Balestra
  Twitter: @BalestraPatrick
+ Enhancements by Edwin Finch
+ www.edwinfinch.com
  */
 
 #include <pebble.h>
@@ -233,7 +235,7 @@ void passcode_settings(bool themeIsLight, bool use_test_num){
 	}
 }
 
-void init() {
+void ask_passcode() {
     window = window_create();
     window_set_window_handlers(window, (WindowHandlers) {
         .load = window_load,
@@ -247,8 +249,8 @@ void deinit(){
 }
 
 int main(){
-	passcode_settings(1, 1);
-	init();
+	passcode_settings(0, 1);
+	ask_passcode();
 	app_event_loop();
 	deinit();
 }

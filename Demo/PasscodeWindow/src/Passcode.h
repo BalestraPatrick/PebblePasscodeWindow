@@ -1,2 +1,2 @@
 #pragma once
-void ask_passcode(bool themeIsLight);
+void ask_passcode();
