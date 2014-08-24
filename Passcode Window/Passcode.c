@@ -1,33 +1,43 @@
 /*
  Developed by: Patrick Balestra
  Twitter: @BalestraPatrick
+ 
+ Enhancements by Edwin Finch
+ www.edwinfinch.com
  */
 
 #include <pebble.h>
-#include "Home.h"
+#include "Passcode.h"
 
-static Window *window;
+#define CIRCLE_HEIGHT 55
+#define CIRCLE_RADIUS 10
 
-static TextLayer *number_1, *number_2, *number_3, *number_4, *number_5, *number_6, *number_7, *number_8, *number_9;
-static TextLayer *number_0, *status_text_layer;
+Window *window;
 
-static BitmapLayer *first_layer, *second_layer, *third_layer, *fourth_layer, *line_layer;
+TextLayer *number_1, *number_2, *number_3, *number_4, *number_5, *number_6, *number_7, *number_8, *number_9;
+TextLayer *number_0, *status_text_layer;
 
-static InverterLayer *highlighter;
+BitmapLayer *line_layer;
 
-static GBitmap *circle_icon, *circle_filled_icon, *line;
+Layer *circle_layer;
 
-static int cursor_position;
+InverterLayer *highlighter, *theme;
 
-static int selected_number;
-static char wrote_passcode[5];
-static char saved_passcode[5];
+GBitmap *circle_icon, *circle_filled_icon, *line;
 
-static int wrote_passcode_int = 0;
+int cursor_position;
+
+int selected_number;
+char wrote_passcode[5];
+char saved_passcode[5];
+
+int wrote_passcode_int = 0;
+int circles_filled = 0;
+bool theme_public = 0;
 
 // Functions
 
-static TextLayer* number_layer_init(GRect location, char *index) {
+TextLayer* number_layer_init(GRect location, char *index) {
     TextLayer *layer = text_layer_create(location);
     text_layer_set_background_color(layer, GColorWhite);
     text_layer_set_text_color(layer, GColorBlack);
@@ -37,31 +47,28 @@ static TextLayer* number_layer_init(GRect location, char *index) {
     return layer;
 }
 
-static void update_bar() {
+void update_bar() {
     inverter_layer_destroy(highlighter);
     int height = 15 * selected_number;
     highlighter = inverter_layer_create(GRect(124, height, 20, 15));
     layer_add_child(window_get_root_layer(window), inverter_layer_get_layer(highlighter));
 }
 
-static void successfully_unlocked() {
-    unlock_app();
-    window_stack_remove(window, false);
+void successfully_unlocked() {
+    window_stack_pop(true);
 }
 
-static void wrong_passcode() {
+void wrong_passcode() {
     cursor_position = 0;
     snprintf(wrote_passcode, 5, "0");
-    bitmap_layer_set_bitmap(first_layer, circle_icon);
-    bitmap_layer_set_bitmap(second_layer, circle_icon);
-    bitmap_layer_set_bitmap(third_layer, circle_icon);
-    bitmap_layer_set_bitmap(fourth_layer, circle_icon);
+    
+    circles_filled = -1;
+    layer_mark_dirty(circle_layer);
     
     text_layer_set_text(status_text_layer, "Wrong passcode.\nTry again.");
-    
 }
 
-static void check_passcode() {
+void check_passcode() {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Checking inserted passcode %s with saved passcode %s", wrote_passcode, saved_passcode);
     if (strcmp(wrote_passcode, saved_passcode) == 0) {
         successfully_unlocked();
@@ -70,14 +77,14 @@ static void check_passcode() {
     }
 }
 
-static void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
+void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
     if (selected_number >= 0 && selected_number < 9) {
         selected_number++;
         update_bar();
     }
 }
 
-static void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
+void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
     if (selected_number > 0 && selected_number <= 9) {
         selected_number--;
         update_bar();
@@ -85,28 +92,23 @@ static void up_single_click_handler(ClickRecognizerRef recognizer, void *context
     
 }
 
-static void select_single_click_handler(ClickRecognizerRef recognizer, void *context) {
+void select_single_click_handler(ClickRecognizerRef recognizer, void *context) {
     // Select number
     switch(cursor_position){
         case 0:
             wrote_passcode_int += selected_number*1000;
             cursor_position++;
-            bitmap_layer_set_bitmap(first_layer, circle_filled_icon);
             break;
         case 1:
             wrote_passcode_int += selected_number*100;
             cursor_position++;
-            bitmap_layer_set_bitmap(second_layer, circle_filled_icon);
             break;
         case 2:
             wrote_passcode_int += selected_number*10;
             cursor_position++;
-            bitmap_layer_set_bitmap(third_layer, circle_filled_icon);
             break;
         case 3:
             wrote_passcode_int += selected_number;
-            bitmap_layer_set_bitmap(fourth_layer, circle_filled_icon);
-            
             if (wrote_passcode_int < 10) {
                 snprintf(wrote_passcode, 5, "000%d", wrote_passcode_int);
             } else if (wrote_passcode_int < 100) {
@@ -119,16 +121,32 @@ static void select_single_click_handler(ClickRecognizerRef recognizer, void *con
             check_passcode();
             break;
     }
+    circles_filled++;
+    layer_mark_dirty(circle_layer);
 }
 
-static void config_provider(Window *window) {
+void config_provider(Window *window) {
     window_single_click_subscribe(BUTTON_ID_DOWN, down_single_click_handler);
     window_single_click_subscribe(BUTTON_ID_UP, up_single_click_handler);
     window_single_click_subscribe(BUTTON_ID_SELECT, select_single_click_handler);
 }
 
-static void window_load(Window *window) {
-    
+void circle_proc(Layer *layer, GContext *ctx){
+    graphics_context_set_stroke_color(ctx, GColorBlack);
+    graphics_context_set_fill_color(ctx, GColorBlack);
+    int i;
+    for(i = 0; i < 4; i++){
+        int fix = 17+(30*i);
+        graphics_draw_circle(ctx, GPoint(fix, CIRCLE_HEIGHT), CIRCLE_RADIUS);
+    }
+    int k;
+    for(k = 0; k < circles_filled; k++){
+        int fix = 17+(30*k);
+        graphics_fill_circle(ctx, GPoint(fix, CIRCLE_HEIGHT), CIRCLE_RADIUS);
+    }
+}
+
+void window_load(Window *window) {
     persist_read_string(1, saved_passcode, 50);
     
     Layer *window_layer = window_get_root_layer(window);
@@ -172,43 +190,28 @@ static void window_load(Window *window) {
     selected_number = 0;
     cursor_position = 0;
     
+    circle_layer = layer_create(GRect(0, 0, 144, 168));
+    layer_set_update_proc(circle_layer, circle_proc);
+    layer_add_child(window_layer, circle_layer);
+    
     update_bar();
     
     window_set_click_config_provider(window, (ClickConfigProvider) config_provider);
-    
-    circle_icon = gbitmap_create_with_resource(RESOURCE_ID_CIRCLE);
-    circle_filled_icon = gbitmap_create_with_resource(RESOURCE_ID_CIRCLE_FILLED);
-    
-    first_layer = bitmap_layer_create(GRect(7, 60, 20, 20));
-    bitmap_layer_set_alignment(first_layer, GAlignCenter);
-    layer_add_child(window_get_root_layer(window), bitmap_layer_get_layer(first_layer));
-    
-    bitmap_layer_set_bitmap(first_layer, circle_icon);
-    
-    second_layer = bitmap_layer_create(GRect(37, 60, 20, 20));
-    bitmap_layer_set_alignment(second_layer, GAlignCenter);
-    layer_add_child(window_get_root_layer(window), bitmap_layer_get_layer(second_layer));
-    bitmap_layer_set_bitmap(second_layer, circle_icon);
-    
-    third_layer = bitmap_layer_create(GRect(67, 60, 20, 20));
-    bitmap_layer_set_alignment(third_layer, GAlignCenter);
-    layer_add_child(window_get_root_layer(window), bitmap_layer_get_layer(third_layer));
-    bitmap_layer_set_bitmap(third_layer, circle_icon);
-    
-    fourth_layer = bitmap_layer_create(GRect(97, 60, 20, 20));
-    bitmap_layer_set_alignment(first_layer, GAlignCenter);
-    layer_add_child(window_get_root_layer(window), bitmap_layer_get_layer(fourth_layer));
-    bitmap_layer_set_bitmap(fourth_layer, circle_icon);
     
     line = gbitmap_create_with_resource(RESOURCE_ID_LINE);
     
     line_layer = bitmap_layer_create(GRect(122, 0, 2, 168));
     bitmap_layer_set_alignment(line_layer, GAlignCenter);
     layer_add_child(window_get_root_layer(window), bitmap_layer_get_layer(line_layer));
+    
     bitmap_layer_set_bitmap(line_layer, line);
+    
+    theme = inverter_layer_create(GRect(0, 0, 144, 168));
+    layer_add_child(window_layer, inverter_layer_get_layer(theme));
+    layer_set_hidden(inverter_layer_get_layer(theme), theme_public);
 }
 
-static void window_unload(Window *window) {
+void window_unload(Window *window) {
     text_layer_destroy(number_1);
     text_layer_destroy(number_2);
     text_layer_destroy(number_3);
@@ -220,16 +223,17 @@ static void window_unload(Window *window) {
     text_layer_destroy(number_9);
     text_layer_destroy(number_0);
     text_layer_destroy(status_text_layer);
-    bitmap_layer_destroy(first_layer);
-    bitmap_layer_destroy(second_layer);
-    bitmap_layer_destroy(third_layer);
-    bitmap_layer_destroy(fourth_layer);
     bitmap_layer_destroy(line_layer);
-    gbitmap_destroy(circle_icon);
-    gbitmap_destroy(circle_filled_icon);
+    layer_destroy(circle_layer);
     gbitmap_destroy(line);
     inverter_layer_destroy(highlighter);
-    window_destroy(window);
+}
+
+void passcode_settings(bool themeIsLight, bool use_test_num){
+    theme_public = themeIsLight;
+    if(use_test_num){
+        persist_write_string(1, "1234");
+    }
 }
 
 void ask_passcode() {
@@ -239,4 +243,15 @@ void ask_passcode() {
         .unload = window_unload,
     });
     window_stack_push(window, true);
+}
+
+void deinit(){
+    window_destroy(window);
+}
+
+int main(){
+    passcode_settings(0, 1);
+    ask_passcode();
+    app_event_loop();
+    deinit();
 }
