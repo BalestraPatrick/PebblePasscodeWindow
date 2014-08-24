@@ -181,7 +181,7 @@ void window_load(Window *window) {
     number_9 = number_layer_init(GRect(124, 135, 20, 17), "9");
     layer_add_child(window_layer, text_layer_get_layer(number_9));
     
-    status_text_layer = text_layer_create(GRect(0, 80, 124, 40));
+    status_text_layer = text_layer_create(GRect(0, 90, 124, 40));
     text_layer_set_text_color(status_text_layer, GColorBlack);
     text_layer_set_font(status_text_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
     text_layer_set_text_alignment(status_text_layer, GTextAlignmentCenter);
@@ -190,7 +190,7 @@ void window_load(Window *window) {
     selected_number = 0;
     cursor_position = 0;
     
-    circle_layer = layer_create(GRect(0, 0, 144, 168));
+    circle_layer = layer_create(GRect(0, 20, 144, 100));
     layer_set_update_proc(circle_layer, circle_proc);
     layer_add_child(window_layer, circle_layer);
     
