@@ -22,3 +22,5 @@ You may need to adjust the functions names to correctly work with your windows i
 #Credits
 
 Created by <a href="http://www.patrickbalestra.com">Patrick Balestra</a>. If this project was useful to you and you're using it in any of your apps, let me know! :)
+
+Thanks to <a href="https://github.com/edwinfinch">Edwan Finch</a> for the great pull requests.
